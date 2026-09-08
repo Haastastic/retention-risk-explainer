@@ -97,3 +97,47 @@ went through the gate.
 - Track review signal over time: what fraction of Claude's comments lead to a
   change, which categories recur. That tells you where to add a lint rule, a test
   template, or a design guardrail so the same issue stops reaching review.
+
+---
+
+## Phase 2 — Data & Problem Framing
+
+**AI-native practice used**
+
+Used Claude Code to turn the discovery brief's prose constraints into
+**executable policy**. The protected-attribute and age-proxy exclusion lists
+from the brief became `retention_risk/schema.py` — typed column groups with a
+`withheld_columns()` function — and `tests/test_schema.py` now fails the build
+if a withheld column reaches the feature matrix, if the schema and
+`docs/data-framing.md` drift apart, or if the engineered-feature list changes
+without the doc changing. The target definition ("left within 6–12 months") was
+similarly pinned: a seeded synthetic `months_to_departure` on real leavers,
+horizon-censored, with property tests asserting a positive is always a real
+leaver and a shorter horizon never adds positives.
+
+The engagement-survey overlay — seven features derived from real IBM columns to
+make the surface resemble Quantum's product — was designed with Claude by
+working backwards from "what would an engagement survey actually measure," then
+each engineered column was documented against the real inputs it blends.
+
+**Why at this stage**
+
+Framing is where fairness is won or lost. A rule that lives only in a brief gets
+skipped under deadline; a rule that fails CI does not. Encoding the exclusion
+list now means every later phase — model, audit, explanation, UI — inherits a
+feature matrix that is provably free of the attributes we said we would not use,
+and the reviewer checks a diff against `schema.py` rather than re-reading a doc.
+
+**What operationalizing this at team scale looks like**
+
+- A **schema-policy module is a required artifact** for any people-data model:
+  protected attributes, proxies, and the "kept but watched" list as code, with a
+  leakage test wired into CI. Templated so every project's looks the same.
+- The brief → schema translation is a **standard Claude task** with a fixed
+  prompt, run at the start of framing; its output is a PR reviewed by an eng
+  lead and a domain owner together.
+- Synthetic or derived features carry a **provenance table** (feature → real
+  inputs → is-it-label-informed) that ships in the repo and is checked by test,
+  so "what did you make up" has a documented answer before anyone asks.
+- Doc-drift tests (schema vs. prose) become a house pattern — the cheapest way
+  to keep design docs honest as code moves under them.

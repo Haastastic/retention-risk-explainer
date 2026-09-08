@@ -31,9 +31,10 @@ This mirrors the architecture and workflow proven in the `ai-underwriter` projec
 - [x] Log this phase in PLAYBOOK.md as the discovery-stage AI practice
 
 ### Phase 2 — Data & Problem Framing
-- [ ] Select and load dataset
-- [ ] Define target variable (attrition within N months)
-- [ ] Explicitly list excluded protected attributes and age-correlated proxies (tenure-past-threshold, time-since-last-promotion where it functions as an age proxy)
+- [x] Select and load dataset — IBM HR Analytics base + engineered engagement-survey overlay; `data/`, `retention_risk/data.py`
+- [x] Define target variable (attrition within N months) — `left_within_horizon`, real leaver + seeded horizon-censored `months_to_departure`; `docs/data-framing.md`
+- [x] Explicitly list excluded protected attributes and age-correlated proxies (tenure-past-threshold, time-since-last-promotion where it functions as an age proxy) — `retention_risk/schema.py`, enforced by `tests/test_schema.py`
+- [x] Log this phase in PLAYBOOK.md as the data-framing AI practice
 
 ### Phase 3 — Core ML Pipeline
 - [ ] Baseline model
