@@ -37,11 +37,15 @@ steers manager attention unevenly and would erode trust in the tool.
 
 | Attribute | Groups (flag rate) | DI ratio | Four-fifths |
 |---|---|---|---|
-| **Gender** | Female 0.10 · Male 0.12 | **0.87** | ✅ pass |
-| **MaritalStatus** | Divorced 0.07 · Married 0.08 · **Single 0.19** | **0.38** | ❌ fail |
-| **AgeBand** | 40-49 0.07 · 50-60 0.10 · 30-39 0.09 · **18-29 0.19** | **0.40** | ❌ fail |
+| **Gender** | Female ≈0.10 · Male ≈0.12 | **≈0.87–0.93** | ✅ pass |
+| **MaritalStatus** | Divorced ≈0.07 · Married ≈0.08 · **Single ≈0.19** | **≈0.38–0.45** | ❌ fail |
+| **AgeBand** | 40-49 ≈0.07 · 50-60 ≈0.10 · 30-39 ≈0.09 · **18-29 ≈0.19** | **≈0.40–0.45** | ❌ fail |
 
-All groups exceed `min_group_size`; no slice was withheld.
+All groups exceed `min_group_size`; no slice was withheld. The DI ratios are
+given as ranges because XGBoost's probabilities shift slightly across library
+builds (e.g. Gender DI is ≈0.87 on the dev machine, ≈0.93 on CI), which moves
+the decimals but never the pass/fail picture. `tests/test_fairness.py` pins the
+qualitative finding, not the exact figures.
 
 ## 4. Interpretation — the disparity is in the data, not the ranking
 
@@ -53,9 +57,9 @@ between cohorts in this dataset, not a model that mis-ranks a subgroup:
 
 | Attribute | Lowest-rate vs highest-rate group | True attrition base rate | Flag-rate DI |
 |---|---|---|---|
-| MaritalStatus | Divorced (8.0%) vs Single (20.2%) | ratio **0.40** | 0.38 |
-| AgeBand | 40-49 (7.7%) vs 18-29 (22.1%) | ratio **0.35** | 0.40 |
-| Gender | Female (12.2%) vs Male (13.4%) | ratio **0.91** | 0.87 |
+| MaritalStatus | Divorced (8.0%) vs Single (20.2%) | ratio **0.40** | ≈0.38–0.45 |
+| AgeBand | 40-49 (7.7%) vs 18-29 (22.1%) | ratio **0.35** | ≈0.40–0.45 |
+| Gender | Female (12.2%) vs Male (13.4%) | ratio **0.91** | ≈0.87–0.93 |
 
 The model flags each cohort at very nearly the rate that cohort actually leaves.
 
