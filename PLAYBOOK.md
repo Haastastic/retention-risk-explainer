@@ -192,3 +192,51 @@ a model that is known to clear the bar, and any regression fails CI.
   this."
 - A standing check: any engineered feature is diffed against the exclusion list
   for *recoverability*, not just for whether it names a forbidden column.
+
+---
+
+## Phase 4 — Fairness Audit
+
+**AI-native practice used**
+
+Built the disparate-impact audit (`retention_risk/fairness.py`,
+`docs/fairness-audit.md`) with Claude Code, and used it to *investigate* a
+failure rather than to certify a pass. The audit found `MaritalStatus` and
+`AgeBand` High-flag rates failing the four-fifths rule badly (DI ≈ 0.38 / 0.40).
+Instead of reaching for a mitigation, the next step was three quick analyses —
+comparing flag DI to true attrition base-rate ratios, checking `mean_score`
+against `flag_rate`, and ablating suspected proxy features — that together showed
+the disparity is a real cohort difference in this data, not a biased ranking.
+That evidence, and the decision *not* to use group-aware thresholds, is written
+up in the audit doc as the "documented reason and mitigation" the discovery
+brief allows.
+
+The audit result is pinned by **characterisation tests**: Gender passes,
+MaritalStatus and AgeBand fail with DI in a stated band, and flag DI tracks the
+true base-rate ratio. If the model changes and these move, CI fails and the doc
+must be revisited — the audit can't silently drift.
+
+**Why at this stage**
+
+Running the audit right after the model is built — not just before launch — is
+what made the disparity a research question with time to answer it, rather than
+a launch blocker to paper over. And doing the base-rate comparison *before*
+writing any mitigation code stopped a reflex "fix" (per-group thresholds) that
+would have used protected attributes at inference and hidden a signal managers
+arguably should see.
+
+**What operationalizing this at team scale looks like**
+
+- The audit is a **library, not a notebook** — same `audit_fairness` call, same
+  report shape, same four-fifths + thin-slice rules across every people-data
+  model, so results are comparable and reviewable.
+- A failing audit triggers a **fixed investigation checklist** (base-rate ratio,
+  score-vs-flag, proxy ablation) before any mitigation is proposed. "Is it the
+  model or the world" is answered with evidence every time.
+- Mitigations that touch protected attributes at inference need **explicit
+  sign-off** from legal + a domain owner, not an engineer's judgement call.
+- Every model ships with its audit doc and `scripts/audit_fairness.py`; the
+  HRBP-facing surface shows per-group flag rates and group sizes at the point of
+  use, so disparate impact is visible in the product, not only in a repo.
+- Characterisation tests on fairness numbers are standard — drift in a fairness
+  metric should break a build, the same as a failing unit test.
