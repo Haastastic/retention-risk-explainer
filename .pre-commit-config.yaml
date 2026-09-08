@@ -1,0 +1,11 @@
+# Runs the same Ruff checks as CI, locally, before each commit.
+# Install once:   pip install pre-commit && pre-commit install
+# Keep current:   pre-commit autoupdate
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.13.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
