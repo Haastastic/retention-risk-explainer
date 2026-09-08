@@ -3,6 +3,7 @@
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]  # run in-tree without an editable install
 addopts = "-q --cov=retention_risk --cov-report=term-missing"
 
 [tool.ruff]
