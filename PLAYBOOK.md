@@ -141,3 +141,54 @@ and the reviewer checks a diff against `schema.py` rather than re-reading a doc.
   so "what did you make up" has a documented answer before anyone asks.
 - Doc-drift tests (schema vs. prose) become a house pattern — the cheapest way
   to keep design docs honest as code moves under them.
+
+---
+
+## Phase 3 — Core ML Pipeline
+
+**AI-native practice used**
+
+Built the pipeline (`pipeline.py`, `model.py`, `evaluate.py`, `training.py`)
+with Claude Code. Two things carried the AI-native weight here:
+
+*Review caught fairness defects, not style.* The automated PR review on the
+data-framing PR flagged two real issues — both about the fairness premise:
+
+1. `growth_opportunity` was engineered partly from `YearsSinceLastPromotion`,
+   an *excluded* age proxy. Because two of the composite's other inputs ship as
+   raw features, the proxy was ~90% recoverable by algebra — the exclusion was
+   nominal. Rebuilt from allowed inputs only.
+2. The `Dataset` leakage guard checked column *names* against
+   `withheld_columns()`, which omitted the label columns. Fixed the set; the
+   guard now rejects `Attrition` regardless of how `X` is assembled.
+
+Both were fixed before merge, so the model in this phase was built on a feature
+matrix that had already survived that scrutiny.
+
+*The brief's metrics are executable.* The discovery-brief success thresholds are
+coded as **pass/fail checks inside the evaluation** (`EvalReport.checks`,
+`passes_brief`), and a test asserts a full training run clears all of them. The
+brief stops being a document you remember to check and becomes a build gate.
+
+**Why at this stage**
+
+The build phase is where "we'll audit fairness later" quietly becomes "we
+shipped a proxy." Having review run on every PR — with a reviewer briefed on the
+exclusion policy as *code* it can diff against — is what turned a subtle
+leakage bug into a same-day fix instead of a Phase 4 finding or a production
+incident. Encoding the brief's thresholds as checks now means Phases 4–7 inherit
+a model that is known to clear the bar, and any regression fails CI.
+
+**What operationalizing this at team scale looks like**
+
+- **Success metrics as executable checks** ship with every model repo — a
+  `passes_brief`-style object plus a test that runs the full pipeline and
+  asserts it. Model quality gates live in CI next to lint and unit tests.
+- The **model card is generated from the eval run**, not hand-written — one
+  command re-emits the numbers, so a stale card is a diff, not a surprise.
+- Review of people-data model PRs is **staffed deliberately**: the reviewer (AI
+  or human) is given the schema-policy module and the brief, and told the two
+  failure modes to look for — proxy leakage and metric gaming — not just "review
+  this."
+- A standing check: any engineered feature is diffed against the exclusion list
+  for *recoverability*, not just for whether it names a forbidden column.

@@ -37,11 +37,11 @@ This mirrors the architecture and workflow proven in the `ai-underwriter` projec
 - [x] Log this phase in PLAYBOOK.md as the data-framing AI practice
 
 ### Phase 3 — Core ML Pipeline
-- [ ] Baseline model
-- [ ] XGBoost classifier
-- [ ] Evaluate on AUC-ROC and precision/recall at manager-actionable risk tiers
-- [ ] Build with Claude Code, PR review automation catching issues as they land
-- [ ] Log this phase in PLAYBOOK.md as the build-stage AI practice
+- [x] Baseline model — logistic regression, `retention_risk/model.py :: train_baseline`
+- [x] XGBoost classifier — `train_xgboost`; ships unless baseline beats it on held-out AUC by > 0.02
+- [x] Evaluate on AUC-ROC and precision/recall at manager-actionable risk tiers — `retention_risk/evaluate.py`, brief thresholds as pass/fail checks; `docs/model-card.md`
+- [x] Build with Claude Code, PR review automation catching issues as they land
+- [x] Log this phase in PLAYBOOK.md as the build-stage AI practice
 
 ### Phase 4 — Fairness Audit
 - [ ] Disparate-impact ratio calculation across protected classes
