@@ -1,0 +1,20 @@
+# Project tooling config. Packaging metadata is intentionally omitted until the
+# pipeline has real modules to package (Phase 3+).
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-include = ["*.ipynb"]  # lint notebooks alongside .py files
+
+[tool.ruff.lint]
+# E/F  = pyflakes + pycodestyle (the flake8 core)
+# I    = import sorting (replaces isort)
+# B    = flake8-bugbear (likely-bug patterns)
+# UP   = pyupgrade (modern syntax)
+# SIM  = flake8-simplify
+# PD   = pandas-vet (guards against slow / fragile DataFrame patterns)
+select = ["E", "F", "I", "B", "UP", "SIM", "PD"]
+
+[tool.ruff.lint.per-file-ignores]
+# Notebooks are exploratory: allow unused expressions (cell output) and star imports.
+"*.ipynb" = ["B018", "F403", "F405"]
