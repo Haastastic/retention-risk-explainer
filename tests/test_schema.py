@@ -20,6 +20,12 @@ def test_age_proxies_are_withheld_not_featured():
     assert schema.AGE_PROXY_EXCLUSIONS.isdisjoint(schema.MODEL_FEATURES)
 
 
+def test_label_columns_are_withheld_from_features():
+    assert {schema.RAW_TARGET_COLUMN, schema.TARGET_COLUMN}.issubset(schema.withheld_columns())
+    assert schema.RAW_TARGET_COLUMN not in schema.MODEL_FEATURES
+    assert schema.TARGET_COLUMN not in schema.MODEL_FEATURES
+
+
 def test_model_features_have_no_duplicates():
     assert len(schema.MODEL_FEATURES) == len(set(schema.MODEL_FEATURES))
 

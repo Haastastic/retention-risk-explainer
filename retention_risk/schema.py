@@ -21,10 +21,12 @@ PROTECTED_ATTRIBUTES: frozenset[str] = frozenset(
 
 # --- Withheld: age-correlated proxies --------------------------------------
 # Excluded as features because they function as stand-ins for age (discovery
-# brief, Constraints). Their retention signal is not discarded — it is folded
-# into engineered composites that blend in non-age inputs (see data.py):
+# brief, Constraints). Excluded outright — NOT re-encoded into an engineered
+# composite, since a near-recoverable form would defeat the exclusion. The
+# overlap with age is mostly also carried by allowed features (YearsAtCompany,
+# YearsInCurrentRole, TrainingTimesLastYear). See docs/data-framing.md §4.
 #   TotalWorkingYears       -> total career tenure, near-linear in age
-#   YearsSinceLastPromotion -> folded into `growth_opportunity`
+#   YearsSinceLastPromotion -> age/seniority proxy; long tail is older employees
 AGE_PROXY_EXCLUSIONS: frozenset[str] = frozenset(
     {
         "TotalWorkingYears",
@@ -115,5 +117,15 @@ CATEGORICAL_FEATURES: tuple[str, ...] = (
 
 
 def withheld_columns() -> frozenset[str]:
-    """All raw columns that must never appear in the model feature matrix."""
-    return PROTECTED_ATTRIBUTES | AGE_PROXY_EXCLUSIONS | ID_OR_CONSTANT
+    """Every column that must never appear in the model feature matrix.
+
+    Includes the label columns: ``Attrition`` deliberately survives ``load_raw``
+    (it feeds target construction and the ``enps`` term), so the leakage guard
+    has to reject it explicitly rather than rely on the feature allowlist.
+    """
+    return (
+        PROTECTED_ATTRIBUTES
+        | AGE_PROXY_EXCLUSIONS
+        | ID_OR_CONSTANT
+        | {RAW_TARGET_COLUMN, TARGET_COLUMN}
+    )

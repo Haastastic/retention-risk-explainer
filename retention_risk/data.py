@@ -86,13 +86,16 @@ def engineer_engagement_features(df: pd.DataFrame, rng: np.random.Generator) -> 
         + noise(5.0)
     )
 
-    # The excluded age proxy YearsSinceLastPromotion feeds ONLY this composite,
-    # blended with training volume and role stagnation so it is not a clean age signal.
+    # Built only from allowed features: training volume (+), role stagnation (−),
+    # and career velocity = JobLevel relative to company tenure (+). The excluded
+    # age proxy YearsSinceLastPromotion is NOT used here — folding in a near-
+    # recoverable form of it would defeat the exclusion (see docs/data-framing.md §4).
+    career_velocity = df["JobLevel"].astype(float) / (df["YearsAtCompany"].astype(float) + 3.0)
     growth_opportunity = (
-        70.0
-        - 6.0 * df["YearsSinceLastPromotion"].astype(float)
+        45.0
         + 5.0 * df["TrainingTimesLastYear"].astype(float)
-        - 2.5 * df["YearsInCurrentRole"].astype(float)
+        - 3.0 * df["YearsInCurrentRole"].astype(float)
+        + 25.0 * career_velocity
         + noise(6.0)
     )
 

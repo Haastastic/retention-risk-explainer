@@ -26,7 +26,7 @@ fabricated signal, except a single deliberately small label-informed term in
 |---|---|---|
 | `engagement_score` | 0–100 | mean of `JobSatisfaction`, `JobInvolvement`, `EnvironmentSatisfaction` |
 | `manager_relationship` | 0–100 | `RelationshipSatisfaction`, `YearsWithCurrManager` (saturating) |
-| `growth_opportunity` | 0–100 | `YearsSinceLastPromotion` (−), `TrainingTimesLastYear` (+), `YearsInCurrentRole` (−) |
+| `growth_opportunity` | 0–100 | `TrainingTimesLastYear` (+), `YearsInCurrentRole` (−), `JobLevel`÷`YearsAtCompany` career-velocity (+) — **no age-proxy inputs** |
 | `workload_strain` | 0–100 | `OverTime`, `BusinessTravel`, `WorkLifeBalance` (inverse) |
 | `recognition` | 0–100 | `PercentSalaryHike`, `PerformanceRating`, `StockOptionLevel` |
 | `enps` | −100–100 | the four scales above **+ a small −12·leaver term** (a real eNPS item correlates with attrition; kept small so it is signal, not a label leak) |
@@ -75,14 +75,19 @@ If a real deployment's data did, they would be added to
 
 ## 4. Excluded age-correlated proxies
 
-Excluded as features because they operate as stand-ins for age. Their retention
-signal is not thrown away — it is folded into engineered composites that blend
-in non-age inputs.
+Excluded as features because they operate as stand-ins for age. They are excluded
+outright — **not** re-encoded into an engineered composite. Folding in a form of a
+proxy that is algebraically recoverable from the composite plus other shipped
+features would defeat the exclusion; the leakage guard checks column names, not
+recoverability, so this discipline is enforced by design review, not by test.
+The overlap with age these columns carry is largely also present in allowed
+features (`YearsAtCompany`, `YearsInCurrentRole`, `TrainingTimesLastYear`), so
+little predictive signal is actually lost.
 
-| Column | Why excluded | Where its signal goes |
+| Column | Why excluded | Treatment |
 |---|---|---|
-| `TotalWorkingYears` | Near-linear in age (total career length). | Not reused — `YearsAtCompany` already carries company-tenure signal. |
-| `YearsSinceLastPromotion` | Functions as an age/seniority proxy; long tails are older employees. | `growth_opportunity`, blended with `TrainingTimesLastYear` and `YearsInCurrentRole`. |
+| `TotalWorkingYears` | Near-linear in age (total career length). | Dropped. `YearsAtCompany` carries the relevant tenure signal. |
+| `YearsSinceLastPromotion` | Functions as an age/seniority proxy; the long tail is older employees. | Dropped. Not used in any feature, engineered or raw. |
 
 ## 5. Kept, but watched
 
