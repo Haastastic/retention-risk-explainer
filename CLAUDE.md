@@ -55,9 +55,9 @@ This mirrors the architecture and workflow proven in the `ai-underwriter` projec
 - [x] Log this phase in PLAYBOOK.md as the explainability-stage AI practice
 
 ### Phase 6 — Test Generation & Code Review
-- [ ] Use Claude to generate the test suite, not just review it
-- [ ] Reuse GitHub Actions + Claude PR review setup from ai-underwriter
-- [ ] Log this phase in PLAYBOOK.md as the test/review-stage AI practice
+- [x] Use Claude to generate the test suite, not just review it — ~94 tests across `tests/`, generated in-PR with the code; `docs/test-strategy.md`
+- [x] Reuse GitHub Actions + Claude PR review setup from ai-underwriter — `.github/workflows/` (claude-code-review.yml inline-prompt variant + CLI-install workaround); coverage gate `--cov-fail-under=95` (actual ≈100%)
+- [x] Log this phase in PLAYBOOK.md as the test/review-stage AI practice
 
 ### Phase 7 — Interface
 - [ ] Streamlit dashboard: risk score, plain-language explanation, suggested manager action

@@ -48,9 +48,6 @@ class EvalReport:
     def passes_brief(self) -> bool:
         return all(self.checks.values())
 
-    def _tier(self, name: str) -> TierStats:
-        return next(t for t in self.tiers if t.tier == name)
-
     def to_dict(self) -> dict:
         return {
             "model_kind": self.model_kind,

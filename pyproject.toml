@@ -4,7 +4,9 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]  # run in-tree without an editable install
-addopts = "-q --cov=retention_risk --cov-report=term-missing"
+# --cov-fail-under is a floor with headroom (the suite sits at ~100%); it exists
+# to catch a PR that adds a code path with no test, not to chase every line.
+addopts = "-q --cov=retention_risk --cov-report=term-missing --cov-fail-under=95"
 filterwarnings = [
     # shap imports trip matplotlib colormap deprecations we can't fix here
     "ignore:.*set_(bad|over|under).*:PendingDeprecationWarning",
