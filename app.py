@@ -12,9 +12,17 @@ from __future__ import annotations
 
 import os
 
+import altair as alt
 import streamlit as st
 
-from retention_risk.app_data import AppBundle, build_bundle, hrbp_view, manager_card
+from retention_risk.app_data import (
+    AppBundle,
+    HrbpView,
+    ManagerCard,
+    build_bundle,
+    hrbp_view,
+    manager_card,
+)
 from retention_risk.narrative import get_narrator
 
 st.set_page_config(page_title="Retention Risk Explainer", page_icon="🧭", layout="wide")
@@ -30,6 +38,20 @@ _TIER_BLURB = {
 @st.cache_resource(show_spinner="Training the model…")
 def _bundle() -> AppBundle:
     return build_bundle()
+
+
+@st.cache_resource(show_spinner="Explaining…")
+def _card(_bundle: AppBundle, row: int, live: bool) -> ManagerCard:
+    # _bundle is unhashable and stable for the session -> underscore-skip it;
+    # `row` and `live` (narration mode) are the real cache key. Without this,
+    # a fresh SHAP explainer is built on every unrelated widget rerun.
+    return manager_card(_bundle, row, narrator=get_narrator())
+
+
+@st.cache_resource(show_spinner="Auditing…")
+def _hrbp(_bundle: AppBundle) -> HrbpView:
+    # audit_fairness scores the whole population; do it once, not per rerun.
+    return hrbp_view(_bundle)
 
 
 def _tier_badge(tier: str) -> None:
@@ -84,8 +106,7 @@ def manager_tab(bundle: AppBundle) -> None:
         st.caption("Your team, most-flagged first")
         pick = st.selectbox("Report", list(row_by_text), label_visibility="collapsed")
 
-    narrator = get_narrator()
-    card = manager_card(bundle, row_by_text[pick], narrator=narrator)
+    card = _card(bundle, row_by_text[pick], _ensure_api_key_in_env())
 
     with right:
         _tier_badge(card.tier)
@@ -101,9 +122,26 @@ def manager_tab(bundle: AppBundle) -> None:
             st.markdown(f"- {d}")
         st.info(f"**Suggested next step** — {card.narrative.suggested_action}")
     with c2:
-        chart = card.driver_chart_frame().set_index("feature")["contribution_pp"]
         st.markdown("**Contribution to the estimate** (percentage points)")
-        st.bar_chart(chart, horizontal=True, color="#c0392b")
+        frame = card.driver_chart_frame()
+        chart = (
+            alt.Chart(frame)
+            .mark_bar()
+            .encode(
+                x=alt.X("contribution_pp:Q", title=None),
+                y=alt.Y("feature:N", sort="-x", title=None),
+                color=alt.Color(
+                    "direction:N",
+                    scale=alt.Scale(
+                        domain=["increases", "decreases"],
+                        range=["#c0392b", "#1e8449"],
+                    ),
+                    legend=alt.Legend(title=None, orient="bottom"),
+                ),
+                tooltip=["feature", "contribution_pp", "direction"],
+            )
+        )
+        st.altair_chart(chart, use_container_width=True)
 
     with st.expander("How to read this"):
         st.markdown(
@@ -118,7 +156,7 @@ def manager_tab(bundle: AppBundle) -> None:
 
 
 def hrbp_tab(bundle: AppBundle) -> None:
-    view = hrbp_view(bundle)
+    view = _hrbp(bundle)
 
     st.markdown("**Risk tier distribution across the population**")
     st.bar_chart(view.tier_counts)
