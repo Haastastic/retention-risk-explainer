@@ -93,6 +93,32 @@ def test_claude_narrator_tolerates_code_fences(explanation):
     assert n.summary == "s"
 
 
+class _RaisingClient:
+    class messages:  # noqa: N801
+        @staticmethod
+        def create(**kwargs):
+            raise RuntimeError("network is down")
+
+
+def test_claude_narrator_falls_back_to_template_on_api_error(explanation):
+    n = ClaudeNarrator(client=_RaisingClient()).narrate(explanation, employee_ref="Sam")
+    assert n.source == "template"
+    assert n.summary.startswith("Sam")
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "not json at all",
+        "{ truncated",
+        json.dumps({"summary": "s"}),  # missing drivers / suggested_action
+    ],
+)
+def test_claude_narrator_falls_back_on_bad_payload(explanation, payload):
+    n = ClaudeNarrator(client=_FakeClient(payload)).narrate(explanation)
+    assert n.source == "template"
+
+
 # --- layer boundary: the LLM never sees or sets the score --------------
 def test_narrative_type_has_no_score_field():
     fields = {f.name for f in dataclasses.fields(Narrative)}

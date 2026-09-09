@@ -196,6 +196,20 @@ class ClaudeNarrator:
             self._client = anthropic.Anthropic()
 
     def narrate(self, explanation: Explanation, *, employee_ref: str | None = None) -> Narrative:
+        """Narrate via Claude, degrading to the template on any API or parse failure.
+
+        A network error, rate limit, or a reply that isn't the expected JSON must
+        not take down the manager-facing narrative — the caller still gets a
+        usable :class:`Narrative`, just with ``source == "template"``.
+        """
+        try:
+            return self._narrate_via_claude(explanation, employee_ref=employee_ref)
+        except Exception:  # noqa: BLE001 - any API/parse failure degrades gracefully
+            return TemplateNarrator().narrate(explanation, employee_ref=employee_ref)
+
+    def _narrate_via_claude(
+        self, explanation: Explanation, *, employee_ref: str | None = None
+    ) -> Narrative:
         import json
 
         ref = employee_ref or "the employee"

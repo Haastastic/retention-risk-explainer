@@ -53,9 +53,15 @@ Two implementations:
 | When | default; always the CI path | when `ANTHROPIC_API_KEY` is set |
 
 `get_narrator()` picks: Claude if `ANTHROPIC_API_KEY` is present (read from `.env`
-via `python-dotenv`), else the template. Any failure constructing the Claude
-client falls back to the template. Model defaults to `claude-haiku-4-5-20251001`,
-overridable with `RETENTION_RISK_CLAUDE_MODEL`.
+via `python-dotenv`), else the template. Model defaults to
+`claude-haiku-4-5-20251001`, overridable with `RETENTION_RISK_CLAUDE_MODEL`.
+
+Fallback is two-layered: `get_narrator()` returns a `TemplateNarrator` if the
+Claude client can't be constructed (missing key, import error), and
+`ClaudeNarrator.narrate()` itself catches any per-call failure — network error,
+rate limit, non-JSON or missing-key reply — and returns the template narrative
+instead (`source` then reads `"template"`). A flaky Claude response never
+reaches the manager as an exception.
 
 The narrative is always framed as a **conversation prompt** — never "will quit",
 never a pay/promotion/performance recommendation. The system prompt says so
