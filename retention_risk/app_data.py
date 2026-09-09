@@ -126,16 +126,14 @@ class HrbpView:
                 )
         return pd.DataFrame(rows)
 
-    def disparity_flags(self) -> list[str]:
-        """Human-readable lines for any attribute failing the four-fifths rule."""
-        out = []
-        for attr in self.fairness.attributes:
-            if attr.passes is False:
-                out.append(
-                    f"{attr.attribute}: disparate-impact ratio "
-                    f"{attr.di_ratio:.2f} (below 0.80) - see docs/fairness-audit.md"
-                )
-        return out
+    def fairness_failures(self) -> list[tuple[str, float]]:
+        """(attribute, di_ratio) for every protected attribute that fails the
+        four-fifths rule on the High flag. Empty if all pass or are undecidable."""
+        return [
+            (attr.attribute, attr.di_ratio)
+            for attr in self.fairness.attributes
+            if attr.passes is False
+        ]
 
 
 def hrbp_view(bundle: AppBundle) -> HrbpView:

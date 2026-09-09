@@ -1,5 +1,7 @@
 """Dashboard: app_data assembly + a headless render of app.py via AppTest."""
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -9,6 +11,8 @@ from retention_risk.app_data import (
     manager_card,
     report_label,
 )
+
+APP_PY = str(Path(__file__).resolve().parents[1] / "app.py")
 
 
 @pytest.fixture(scope="session")
@@ -52,17 +56,23 @@ def test_hrbp_view_surfaces_group_sizes_next_to_rates(bundle):
     tbl = view.flag_rate_table()
     assert {"attribute", "group", "n", "high_flag_rate", "mean_score"} <= set(tbl.columns)
     assert (tbl["n"] > 0).all()
-    # the known v1 finding is surfaced, not hidden
-    flags = view.disparity_flags()
-    assert any("MaritalStatus" in f for f in flags)
-    assert any("AgeBand" in f for f in flags)
+    # the known v1 finding is surfaced as (attribute, di_ratio), not hidden
+    failures = dict(view.fairness_failures())
+    assert "MaritalStatus" in failures and failures["MaritalStatus"] < 0.8
+    assert "AgeBand" in failures and failures["AgeBand"] < 0.8
+
+
+def test_disparity_banner_separates_documented_from_novel_failures():
+    from app import _DOCUMENTED_DISPARITIES
+
+    assert sorted(_DOCUMENTED_DISPARITIES) == ["AgeBand", "MaritalStatus"]
 
 
 def test_app_renders_without_exception():
     """Headless render of the whole page — catches wiring / API misuse."""
     from streamlit.testing.v1 import AppTest
 
-    at = AppTest.from_file("app.py", default_timeout=90)
+    at = AppTest.from_file(APP_PY, default_timeout=90)
     at.run()
     assert not at.exception
     assert at.title[0].value.endswith("Retention Risk Explainer")
@@ -72,10 +82,10 @@ def test_app_renders_without_exception():
 def test_app_switching_reports_does_not_error():
     from streamlit.testing.v1 import AppTest
 
-    at = AppTest.from_file("app.py", default_timeout=90)
+    at = AppTest.from_file(APP_PY, default_timeout=90)
     at.run()
     assert not at.exception
-    # options are raw row ints; pick a different one and re-run
+    # pick a different report from the selectbox and re-run
     other = at.selectbox[0].options[5]
     at.selectbox[0].set_value(other).run()
     assert not at.exception

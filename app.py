@@ -40,17 +40,29 @@ def _tier_badge(tier: str) -> None:
     )
 
 
-def _has_api_key() -> bool:
+def _ensure_api_key_in_env() -> bool:
+    """Bridge a Streamlit-secrets key into os.environ so ``get_narrator`` sees it.
+
+    ``retention_risk.narrative`` deliberately doesn't import streamlit, so it only
+    reads ``os.environ``. If the deployment set ANTHROPIC_API_KEY solely via
+    ``.streamlit/secrets.toml``, copy it across before the narrator is built —
+    otherwise the sidebar would claim "live" while narration stays templated.
+    Returns True if a key is available by either route.
+    """
     if os.environ.get("ANTHROPIC_API_KEY"):
         return True
     try:
-        return bool(st.secrets.get("ANTHROPIC_API_KEY", ""))
+        secret = st.secrets.get("ANTHROPIC_API_KEY", "")
     except Exception:  # noqa: BLE001 - no secrets.toml at all
-        return False
+        secret = ""
+    if secret:
+        os.environ["ANTHROPIC_API_KEY"] = str(secret)
+        return True
+    return False
 
 
 def _narration_source_note() -> None:
-    if _has_api_key():
+    if _ensure_api_key_in_env():
         st.sidebar.success("Narratives: live (Claude)")
     else:
         st.sidebar.info(
@@ -130,17 +142,38 @@ def hrbp_tab(bundle: AppBundle) -> None:
         width="stretch",
     )
 
-    flags = view.disparity_flags()
-    if flags:
-        st.warning(
-            "**Disparate-impact review required.** The following groups fall outside "
-            "the four-fifths rule on the High flag. This is a documented, accepted "
-            "finding for v1 (the disparity tracks real cohort attrition differences "
-            "in this dataset) — but the flagged lists should be checked for cohort "
-            "concentration before a manager acts on them:\n\n" + "\n".join(f"- {f}" for f in flags)
-        )
-    else:
+    _render_disparity_banner(view.fairness_failures())
+
+
+# Attributes whose four-fifths failure is analysed and accepted for v1 in
+# docs/fairness-audit.md. A failure on anything else is not covered by that
+# analysis and must be treated as new.
+_DOCUMENTED_DISPARITIES = {"MaritalStatus", "AgeBand"}
+
+
+def _render_disparity_banner(failures: list[tuple[str, float]]) -> None:
+    if not failures:
         st.success("All protected groups within the four-fifths rule on the High flag.")
+        return
+
+    known = [f for f in failures if f[0] in _DOCUMENTED_DISPARITIES]
+    novel = [f for f in failures if f[0] not in _DOCUMENTED_DISPARITIES]
+
+    if known:
+        st.warning(
+            "**Disparate-impact — documented finding.** These attributes fall "
+            "outside the four-fifths rule on the High flag; `docs/fairness-audit.md` "
+            "shows the disparity tracks real cohort attrition differences in this "
+            "dataset. Still check flagged lists for cohort concentration before "
+            "acting:\n\n" + "\n".join(f"- {a}: DI ratio {r:.2f}" for a, r in known)
+        )
+    if novel:
+        st.error(
+            "**Disparate-impact — not previously analysed.** These attributes fail "
+            "the four-fifths rule and are *not* covered by the v1 fairness audit. "
+            "Investigate before the tool is used for this population:\n\n"
+            + "\n".join(f"- {a}: DI ratio {r:.2f}" for a, r in novel)
+        )
 
 
 def main() -> None:
