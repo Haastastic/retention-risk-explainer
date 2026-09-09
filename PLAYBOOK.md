@@ -6,6 +6,9 @@ solo-project scale.
 
 One entry per SDLC phase, written as the work happens.
 
+**Live demo:** <https://retention-risk-explainer.streamlit.app/> ·
+**Repo:** <https://github.com/Haastastic/retention-risk-explainer>
+
 ---
 
 ## Phase 1 — Discovery
