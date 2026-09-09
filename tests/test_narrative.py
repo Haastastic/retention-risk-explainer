@@ -112,6 +112,10 @@ def test_claude_narrator_falls_back_to_template_on_api_error(explanation):
         "not json at all",
         "{ truncated",
         json.dumps({"summary": "s"}),  # missing drivers / suggested_action
+        json.dumps(
+            {"summary": "s", "drivers": "a, b, c", "suggested_action": "x"}
+        ),  # drivers not a list
+        json.dumps(["summary", "drivers"]),  # not even an object
     ],
 )
 def test_claude_narrator_falls_back_on_bad_payload(explanation, payload):

@@ -60,19 +60,8 @@ def _onehot_source(transformed_name: str) -> str:
     return transformed_name
 
 
-def explain_prediction(
-    model: RiskModel, row: pd.DataFrame, *, top_k: int = DEFAULT_TOP_K
-) -> Explanation:
-    """Explain a single-row prediction.
-
-    ``row`` must be a 1-row DataFrame with the model feature columns.
-    """
-    if len(row) != 1:
-        raise ValueError("explain_prediction expects exactly one row")
-
-    score = float(model.predict_proba(row)[0])
-    tier = str(model.assign_tier(np.array([score]))[0])
-
+def _tree_contributions(model: RiskModel, row: pd.DataFrame) -> tuple[dict[str, float], float]:
+    """Exact SHAP for the XGBoost estimator, one-hot folded to source features."""
     prep = model.pipeline_.named_steps["prep"]
     estimator = model.pipeline_.named_steps["est"]
     x_trans = prep.transform(row)
@@ -83,13 +72,62 @@ def explain_prediction(
     if sv.ndim == 3:  # (n, features, classes) -> positive class
         sv = sv[..., -1]
     sv = sv[0]
-    base = explainer.expected_value
-    base_value = float(np.ravel(base)[-1])
+    base_value = float(np.ravel(explainer.expected_value)[-1])
 
-    # Fold one-hot contributions back onto the source feature.
     folded: dict[str, float] = {}
     for name, contribution in zip(trans_names, sv, strict=True):
-        folded[_onehot_source(name)] = folded.get(_onehot_source(name), 0.0) + float(contribution)
+        src = _onehot_source(name)
+        folded[src] = folded.get(src, 0.0) + float(contribution)
+    return folded, base_value
+
+
+def _model_agnostic_contributions(
+    model: RiskModel, row: pd.DataFrame
+) -> tuple[dict[str, float], float]:
+    """Permutation SHAP for any non-tree estimator (e.g. the logistic baseline).
+
+    Runs in the preprocessed numeric space against a background sample kept at
+    fit time, then folds one-hot columns back to source features.
+    """
+    if model.background_ is None:
+        raise RuntimeError("model has no background sample; refit with the current code")
+    prep = model.pipeline_.named_steps["prep"]
+    estimator = model.pipeline_.named_steps["est"]
+    trans_names = list(prep.get_feature_names_out())
+
+    background = np.asarray(prep.transform(model.background_))
+    x_trans = np.asarray(prep.transform(row))
+    explainer = shap.Explainer(lambda a: estimator.predict_proba(a)[:, 1], background)
+    result = explainer(x_trans)
+
+    values = np.asarray(result.values)[0]
+    base_value = float(np.ravel(result.base_values)[0])
+    folded: dict[str, float] = {}
+    for name, contribution in zip(trans_names, values, strict=True):
+        src = _onehot_source(name)
+        folded[src] = folded.get(src, 0.0) + float(contribution)
+    return folded, base_value
+
+
+def explain_prediction(
+    model: RiskModel, row: pd.DataFrame, *, top_k: int = DEFAULT_TOP_K
+) -> Explanation:
+    """Explain a single-row prediction.
+
+    ``row`` must be a 1-row DataFrame with the model feature columns. Uses exact
+    tree SHAP for the XGBoost model and a slower model-agnostic explainer for any
+    other estimator kind (e.g. the logistic-regression baseline).
+    """
+    if len(row) != 1:
+        raise ValueError("explain_prediction expects exactly one row")
+
+    score = float(model.predict_proba(row)[0])
+    tier = str(model.assign_tier(np.array([score]))[0])
+
+    if model.kind == "xgboost":
+        folded, base_value = _tree_contributions(model, row)
+    else:
+        folded, base_value = _model_agnostic_contributions(model, row)
 
     ordered = sorted(folded.items(), key=lambda kv: abs(kv[1]), reverse=True)
     top = []

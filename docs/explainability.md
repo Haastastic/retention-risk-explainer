@@ -30,8 +30,11 @@ Narrator.narrate(explanation)   ->  Narrative           (plain language)
 
 Details:
 
-- **`shap.TreeExplainer`** on the fitted XGBoost estimator, applied to the
-  preprocessed row.
+- **Explainer depends on the estimator kind.** `shap.TreeExplainer` (exact,
+  ~0.04s) for the XGBoost model; a model-agnostic permutation explainer
+  (~6s, run against a 100-row background sample kept at fit time) for any other
+  kind. `TrainingResult.best` can ship the logistic-regression baseline, so both
+  paths are live and both are tested.
 - **One-hot folding.** `Department_Sales`, `Department_Research`, … are summed
   back onto `Department`, so a manager sees the feature, not the dummy column.
   `all_contributions` keys are always a subset of `schema.MODEL_FEATURES`.
@@ -59,9 +62,10 @@ via `python-dotenv`), else the template. Model defaults to
 Fallback is two-layered: `get_narrator()` returns a `TemplateNarrator` if the
 Claude client can't be constructed (missing key, import error), and
 `ClaudeNarrator.narrate()` itself catches any per-call failure — network error,
-rate limit, non-JSON or missing-key reply — and returns the template narrative
-instead (`source` then reads `"template"`). A flaky Claude response never
-reaches the manager as an exception.
+rate limit, non-JSON or missing-key reply, or a reply whose `drivers` isn't a
+list — and returns the template narrative instead (`source` then reads
+`"template"`). A flaky Claude response never reaches the manager as an
+exception, and never as a garbled shape.
 
 The narrative is always framed as a **conversation prompt** — never "will quit",
 never a pay/promotion/performance recommendation. The system prompt says so

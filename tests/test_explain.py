@@ -5,6 +5,7 @@ import pytest
 
 from retention_risk import schema
 from retention_risk.explain import DEFAULT_TOP_K, explain_prediction
+from retention_risk.model import train_baseline
 from retention_risk.training import run_training
 
 
@@ -61,3 +62,13 @@ def test_prompt_facts_omit_the_numeric_score(model, high_risk_row):
     assert exp.risk_tier in facts
     assert f"{exp.risk_score:.2f}" not in facts
     assert str(exp.risk_score) not in facts
+
+
+def test_non_tree_model_is_explainable_via_the_agnostic_path(dataset):
+    """TrainingResult.best can ship the logistic baseline; it must still explain."""
+    baseline = train_baseline(dataset.X, dataset.y, seed=1)
+    row = dataset.X.iloc[[int(np.argmax(baseline.predict_proba(dataset.X)))]]
+    exp = explain_prediction(baseline, row)
+    assert len(exp.top_contributions) == DEFAULT_TOP_K
+    assert set(exp.all_contributions).issubset(set(schema.MODEL_FEATURES))
+    assert exp.risk_score == pytest.approx(float(baseline.predict_proba(row)[0]))

@@ -104,6 +104,7 @@ class RiskModel:
         self.pipeline_: Pipeline | None = None
         self.thresholds_: TierThresholds | None = None
         self.feature_names_: list[str] = []
+        self.background_: pd.DataFrame | None = None  # sample kept for SHAP explainers
 
     # -- fit / predict -----------------------------------------------------
     def fit(self, X: pd.DataFrame, y: pd.Series) -> RiskModel:
@@ -111,6 +112,7 @@ class RiskModel:
         self.feature_names_ = list(X.columns)
         self.pipeline_ = build_pipeline(self.kind, y, self.seed)
         self.pipeline_.fit(X, y)
+        self.background_ = X.sample(n=min(len(X), 100), random_state=self.seed)
         train_scores = self._raw_proba(X)
         self.thresholds_ = TierThresholds(
             high=float(np.quantile(train_scores, self.high_quantile)),

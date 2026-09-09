@@ -228,6 +228,8 @@ class ClaudeNarrator:
         if text.startswith("```"):
             text = text.split("```", 2)[1].removeprefix("json").strip()
         data = json.loads(text)
+        if not isinstance(data, dict) or not isinstance(data.get("drivers"), list):
+            raise ValueError("narrative reply is not the expected JSON shape")
         return Narrative(
             summary=str(data["summary"]).strip(),
             drivers=[str(d).strip() for d in data["drivers"]],
