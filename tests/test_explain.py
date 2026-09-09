@@ -47,6 +47,14 @@ def test_direction_matches_sign(model, high_risk_row):
         assert c.direction == ("increases" if c.shap > 0 else "decreases")
 
 
+def test_contributions_are_additive_in_probability_space(model, high_risk_row):
+    """base_value + sum(contributions) reconstructs P(leave) — same unit both kinds."""
+    exp = explain_prediction(model, high_risk_row)
+    recon = exp.base_value + sum(exp.all_contributions.values())
+    assert recon == pytest.approx(exp.risk_score, abs=1e-6)
+    assert 0.0 <= exp.base_value <= 1.0
+
+
 def test_top_k_is_configurable(model, high_risk_row):
     assert len(explain_prediction(model, high_risk_row, top_k=3).top_contributions) == 3
 
@@ -64,7 +72,7 @@ def test_prompt_facts_omit_the_numeric_score(model, high_risk_row):
     assert str(exp.risk_score) not in facts
 
 
-def test_non_tree_model_is_explainable_via_the_agnostic_path(dataset):
+def test_non_tree_model_is_explainable(dataset):
     """TrainingResult.best can ship the logistic baseline; it must still explain."""
     baseline = train_baseline(dataset.X, dataset.y, seed=1)
     row = dataset.X.iloc[[int(np.argmax(baseline.predict_proba(dataset.X)))]]
@@ -72,3 +80,5 @@ def test_non_tree_model_is_explainable_via_the_agnostic_path(dataset):
     assert len(exp.top_contributions) == DEFAULT_TOP_K
     assert set(exp.all_contributions).issubset(set(schema.MODEL_FEATURES))
     assert exp.risk_score == pytest.approx(float(baseline.predict_proba(row)[0]))
+    recon = exp.base_value + sum(exp.all_contributions.values())
+    assert recon == pytest.approx(exp.risk_score, abs=1e-6)

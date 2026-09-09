@@ -24,17 +24,20 @@ Narrator.narrate(explanation)   ->  Narrative           (plain language)
 | Field | Meaning |
 |---|---|
 | `risk_score`, `risk_tier` | **copied from the model output** — nothing here recomputes them |
-| `base_value` | SHAP expected value (model margin space) |
+| `base_value` | SHAP expected value, **probability space** |
 | `top_contributions` | top-k `FeatureContribution(feature, value, shap, direction)` by \|shap\| |
 | `all_contributions` | every source feature → summed SHAP contribution |
 
 Details:
 
-- **Explainer depends on the estimator kind.** `shap.TreeExplainer` (exact,
-  ~0.04s) for the XGBoost model; a model-agnostic permutation explainer
-  (~6s, run against a 100-row background sample kept at fit time) for any other
-  kind. `TrainingResult.best` can ship the logistic-regression baseline, so both
-  paths are live and both are tested.
+- **One explainer for every estimator kind.** A model-agnostic explainer over
+  the fitted estimator's `predict_proba`, run in the preprocessed numeric space
+  against a 100-row background sample captured at `fit` time. `TrainingResult.best`
+  can ship either the XGBoost model or the logistic baseline, and both go through
+  the identical path (~0.04s per row).
+- **Probability space, additive.** `base_value + Σ all_contributions ≈ risk_score`
+  to 1e-6, regardless of model kind — so a dashboard bar chart's segments sum to
+  the score. Asserted in `tests/test_explain.py`.
 - **One-hot folding.** `Department_Sales`, `Department_Research`, … are summed
   back onto `Department`, so a manager sees the feature, not the dummy column.
   `all_contributions` keys are always a subset of `schema.MODEL_FEATURES`.

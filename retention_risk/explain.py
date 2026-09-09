@@ -27,14 +27,18 @@ DEFAULT_TOP_K = 5
 class FeatureContribution:
     feature: str
     value: object  # the employee's actual value for this feature
-    shap: float  # signed contribution in the model's margin space
+    shap: float  # signed contribution in probability space (see Explanation)
     direction: str  # "increases" | "decreases"
 
 
 @dataclass
 class Explanation:
     """Structured explanation of one prediction. ``risk_score`` and ``risk_tier``
-    are copied from the model output — nothing here recomputes them."""
+    are copied from the model output — nothing here recomputes them.
+
+    SHAP values (``base_value`` and every ``shap`` / ``all_contributions``) are in
+    **probability space** regardless of model kind, so
+    ``base_value + sum(all_contributions.values()) ≈ risk_score``."""
 
     risk_score: float
     risk_tier: str
@@ -60,53 +64,42 @@ def _onehot_source(transformed_name: str) -> str:
     return transformed_name
 
 
-def _tree_contributions(model: RiskModel, row: pd.DataFrame) -> tuple[dict[str, float], float]:
-    """Exact SHAP for the XGBoost estimator, one-hot folded to source features."""
-    prep = model.pipeline_.named_steps["prep"]
-    estimator = model.pipeline_.named_steps["est"]
-    x_trans = prep.transform(row)
-    trans_names = list(prep.get_feature_names_out())
-
-    explainer = shap.TreeExplainer(estimator)
-    sv = np.asarray(explainer.shap_values(x_trans))
-    if sv.ndim == 3:  # (n, features, classes) -> positive class
-        sv = sv[..., -1]
-    sv = sv[0]
-    base_value = float(np.ravel(explainer.expected_value)[-1])
-
+def _fold_onehot(trans_names: list[str], values: np.ndarray) -> dict[str, float]:
+    """Sum transformed-column SHAP values back onto their source model feature."""
     folded: dict[str, float] = {}
-    for name, contribution in zip(trans_names, sv, strict=True):
+    for name, contribution in zip(trans_names, values, strict=True):
         src = _onehot_source(name)
         folded[src] = folded.get(src, 0.0) + float(contribution)
-    return folded, base_value
+    return folded
 
 
-def _model_agnostic_contributions(
-    model: RiskModel, row: pd.DataFrame
-) -> tuple[dict[str, float], float]:
-    """Permutation SHAP for any non-tree estimator (e.g. the logistic baseline).
-
-    Runs in the preprocessed numeric space against a background sample kept at
-    fit time, then folds one-hot columns back to source features.
-    """
+def _require_background(model: RiskModel) -> pd.DataFrame:
     if model.background_ is None:
         raise RuntimeError("model has no background sample; refit with the current code")
+    return model.background_
+
+
+def _contributions(model: RiskModel, row: pd.DataFrame) -> tuple[dict[str, float], float]:
+    """SHAP contributions for one row, in probability space, folded to source features.
+
+    One code path for every estimator kind: a model-agnostic explainer over the
+    fitted estimator's ``predict_proba`` in the preprocessed numeric space,
+    against the background sample captured at ``fit`` time. Probability space
+    means ``base_value + sum(contributions) ≈ P(leave)`` regardless of whether
+    the shipping model is XGBoost or the logistic baseline.
+    """
     prep = model.pipeline_.named_steps["prep"]
     estimator = model.pipeline_.named_steps["est"]
     trans_names = list(prep.get_feature_names_out())
 
-    background = np.asarray(prep.transform(model.background_))
+    background = np.asarray(prep.transform(_require_background(model)))
     x_trans = np.asarray(prep.transform(row))
     explainer = shap.Explainer(lambda a: estimator.predict_proba(a)[:, 1], background)
     result = explainer(x_trans)
 
     values = np.asarray(result.values)[0]
     base_value = float(np.ravel(result.base_values)[0])
-    folded: dict[str, float] = {}
-    for name, contribution in zip(trans_names, values, strict=True):
-        src = _onehot_source(name)
-        folded[src] = folded.get(src, 0.0) + float(contribution)
-    return folded, base_value
+    return _fold_onehot(trans_names, values), base_value
 
 
 def explain_prediction(
@@ -114,9 +107,8 @@ def explain_prediction(
 ) -> Explanation:
     """Explain a single-row prediction.
 
-    ``row`` must be a 1-row DataFrame with the model feature columns. Uses exact
-    tree SHAP for the XGBoost model and a slower model-agnostic explainer for any
-    other estimator kind (e.g. the logistic-regression baseline).
+    ``row`` must be a 1-row DataFrame with the model feature columns. Works for
+    any estimator kind; SHAP values come back in probability space.
     """
     if len(row) != 1:
         raise ValueError("explain_prediction expects exactly one row")
@@ -124,10 +116,7 @@ def explain_prediction(
     score = float(model.predict_proba(row)[0])
     tier = str(model.assign_tier(np.array([score]))[0])
 
-    if model.kind == "xgboost":
-        folded, base_value = _tree_contributions(model, row)
-    else:
-        folded, base_value = _model_agnostic_contributions(model, row)
+    folded, base_value = _contributions(model, row)
 
     ordered = sorted(folded.items(), key=lambda kv: abs(kv[1]), reverse=True)
     top = []
