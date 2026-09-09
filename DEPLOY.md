@@ -4,6 +4,10 @@ Phase 8. Everything in the repo is ready for a free-tier deploy; the only step
 that can't be automated is the one-time connect-and-deploy in the Streamlit
 dashboard. This file is that step.
 
+**Deployed:** <https://retention-risk-explainer.streamlit.app/> (branch `main`,
+`ANTHROPIC_API_KEY` set → live Claude narration). It auto-redeploys on every push
+to `main`. The steps below are kept as the runbook for re-deploying or moving it.
+
 ---
 
 ## What's already prepared

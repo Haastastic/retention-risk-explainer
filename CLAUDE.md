@@ -66,7 +66,7 @@ This mirrors the architecture and workflow proven in the `ai-underwriter` projec
 
 ### Phase 8 — Deployment & Documentation
 - [x] CI/CD via GitHub Actions — lint + test (95% coverage gate) + Claude review on every PR; `tests/test_app.py` headless render is the deploy gate; app auto-redeploys on push to `main`
-- [~] Deploy to Streamlit Community Cloud (or equivalent free tier) for a live link — everything prepared (`app.py`, `requirements.txt`, `runtime.txt`, `.streamlit/`, `DEPLOY.md`); the one-time connect-and-deploy click at share.streamlit.io is a manual user step (see DEPLOY.md)
+- [x] Deploy to Streamlit Community Cloud (or equivalent free tier) for a live link — **live at <https://retention-risk-explainer.streamlit.app/>** (`ANTHROPIC_API_KEY` set → live Claude narration); auto-redeploys on push to `main`
 - [x] Finalize PLAYBOOK.md as a stage-by-stage account of where AI was embedded, framed as a template for org-wide rollout — `PLAYBOOK.md` Phase 8 entry + "Closing — this repo as a template for AI-native delivery"
 - [x] README.md — repo front door, architecture, quickstart, results, docs index
 

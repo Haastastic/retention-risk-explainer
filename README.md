@@ -1,5 +1,7 @@
 # Retention Risk Explainer
 
+**Live demo: <https://retention-risk-explainer.streamlit.app/>**
+
 An explainable, fairness-audited attrition-risk model — a plausible feature for an
 engagement product — built as a stage-by-stage demonstration of AI-native
 engineering practice.
@@ -58,6 +60,8 @@ streamlit run app.py                     # the dashboard
 The dashboard works with no configuration — narratives use a deterministic
 template. To enable live Claude narration, put `ANTHROPIC_API_KEY` in a `.env`
 file (local) or Streamlit secrets (deployed). See [`.env.example`](.env.example).
+The [hosted demo](https://retention-risk-explainer.streamlit.app/) has the key
+configured, so its narratives are live Claude output.
 
 ## Results
 
