@@ -91,6 +91,29 @@ def test_low_tier_summary_never_headlines_a_risk_driver():
     assert any("keeping an eye on" in d for d in n.drivers)
 
 
+@pytest.mark.parametrize("tier", ["High", "Medium", "Low"])
+def test_narrative_is_coherent_when_all_top_contributions_share_a_sign(tier):
+    """Elevated tier + only risk-decreasing contributions (or Low + only increasing)
+    must not produce a dangling 'on the other side' / empty driver list."""
+    from retention_risk.explain import Explanation, FeatureContribution
+
+    # every top contribution decreases risk, yet the row is in `tier`
+    exp = Explanation(
+        risk_score={"High": 0.9, "Medium": 0.5, "Low": 0.05}[tier],
+        risk_tier=tier,
+        base_value=0.5,
+        top_contributions=[
+            FeatureContribution("engagement_score", 70.0, -0.2, "decreases"),
+            FeatureContribution("recognition", 60.0, -0.1, "decreases"),
+        ],
+        all_contributions={"engagement_score": -0.2, "recognition": -0.1},
+    )
+    n = TemplateNarrator().narrate(exp, employee_ref="Kim")
+    assert n.drivers  # never empty
+    assert not any(d.startswith("On the other side") for d in n.drivers)
+    assert n.suggested_action
+
+
 # --- claude narrator (mocked) ---------------------------------------------
 def test_claude_narrator_parses_json(explanation):
     payload = json.dumps(

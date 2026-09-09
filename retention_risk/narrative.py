@@ -148,6 +148,10 @@ class TemplateNarrator:
 
     source: NarrativeSource = "template"
 
+    _MIXED_SIGNAL = (
+        "No single factor dominates; the tier reflects a combination of smaller signals."
+    )
+
     def narrate(self, explanation: Explanation, *, employee_ref: str | None = None) -> Narrative:
         ref = employee_ref or "This person"
         raising = [c for c in explanation.top_contributions if c.direction == "increases"]
@@ -155,17 +159,24 @@ class TemplateNarrator:
         elevated = explanation.risk_tier != "Low"
 
         if elevated:
+            # Lead with the risk drivers. If the top contributions are somehow all
+            # risk-decreasing, don't use the "on the other side" framing (there is
+            # no first side) — say the tier comes from many small signals.
             drivers = [_phrase(c.feature, "increases").capitalize() for c in raising[:3]]
-            if easing:
+            if drivers and easing:
                 drivers.append(f"On the other side, {_phrase(easing[0].feature, 'decreases')}.")
+            elif not drivers:
+                drivers = [self._MIXED_SIGNAL]
         else:
             # Low tier: lead with what's keeping risk down; note any lone risk
             # factor as a watch-item, not a headline.
             drivers = [_phrase(c.feature, "decreases").capitalize() for c in easing[:3]]
-            if raising:
+            if drivers and raising:
                 drivers.append(
                     f"Worth keeping an eye on: {_phrase(raising[0].feature, 'increases')}."
                 )
+            elif not drivers:
+                drivers = [self._MIXED_SIGNAL]
 
         top_feature = raising[0].feature if raising else None
         # For a Low-tier person, don't headline a risk driver — the tool isn't
@@ -175,9 +186,9 @@ class TemplateNarrator:
         )
 
         summary = _tier_sentence(explanation.risk_tier, ref)
-        if raising and elevated:
+        if elevated and raising:
             summary += " The biggest contributor is that " + _phrase(top_feature, "increases") + "."
-        elif easing and not elevated:
+        elif not elevated and easing:
             summary += " What's helping most: " + _phrase(easing[0].feature, "decreases") + "."
 
         return Narrative(
