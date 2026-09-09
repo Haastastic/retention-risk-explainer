@@ -152,17 +152,33 @@ class TemplateNarrator:
         ref = employee_ref or "This person"
         raising = [c for c in explanation.top_contributions if c.direction == "increases"]
         easing = [c for c in explanation.top_contributions if c.direction == "decreases"]
+        elevated = explanation.risk_tier != "Low"
 
-        drivers = [_phrase(c.feature, c.direction).capitalize() for c in raising[:3]]
-        if easing:
-            drivers.append(f"On the other side, {_phrase(easing[0].feature, 'decreases')}.")
+        if elevated:
+            drivers = [_phrase(c.feature, "increases").capitalize() for c in raising[:3]]
+            if easing:
+                drivers.append(f"On the other side, {_phrase(easing[0].feature, 'decreases')}.")
+        else:
+            # Low tier: lead with what's keeping risk down; note any lone risk
+            # factor as a watch-item, not a headline.
+            drivers = [_phrase(c.feature, "decreases").capitalize() for c in easing[:3]]
+            if raising:
+                drivers.append(
+                    f"Worth keeping an eye on: {_phrase(raising[0].feature, 'increases')}."
+                )
 
         top_feature = raising[0].feature if raising else None
-        action = _ACTION_BY_DRIVER.get(top_feature, _GENERIC_ACTION)
+        # For a Low-tier person, don't headline a risk driver — the tool isn't
+        # flagging them. Point at what's keeping risk down instead.
+        action = (
+            _ACTION_BY_DRIVER.get(top_feature, _GENERIC_ACTION) if elevated else _GENERIC_ACTION
+        )
 
         summary = _tier_sentence(explanation.risk_tier, ref)
-        if raising:
+        if raising and elevated:
             summary += " The biggest contributor is that " + _phrase(top_feature, "increases") + "."
+        elif easing and not elevated:
+            summary += " What's helping most: " + _phrase(easing[0].feature, "decreases") + "."
 
         return Narrative(
             summary=summary, drivers=drivers, suggested_action=action, source=self.source

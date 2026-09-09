@@ -69,6 +69,28 @@ def test_low_risk_reads_as_reassuring(low_explanation):
     assert "not currently showing elevated" in n.summary
 
 
+def test_low_tier_summary_never_headlines_a_risk_driver():
+    """A Low-tier row with a dominant risk-increasing feature must not self-contradict."""
+    from retention_risk.explain import Explanation, FeatureContribution
+
+    exp = Explanation(
+        risk_score=0.05,
+        risk_tier="Low",
+        base_value=0.12,
+        top_contributions=[
+            FeatureContribution("OverTime", "Yes", 0.9, "increases"),
+            FeatureContribution("engagement_score", 80.0, -0.4, "decreases"),
+        ],
+        all_contributions={"OverTime": 0.9, "engagement_score": -0.4},
+    )
+    n = TemplateNarrator().narrate(exp, employee_ref="Jo")
+    assert "not currently showing elevated" in n.summary
+    assert "biggest contributor" not in n.summary
+    assert "raising the estimate" not in n.summary
+    # the lone risk factor still surfaces, but as a watch-item
+    assert any("keeping an eye on" in d for d in n.drivers)
+
+
 # --- claude narrator (mocked) ---------------------------------------------
 def test_claude_narrator_parses_json(explanation):
     payload = json.dumps(

@@ -30,11 +30,20 @@ Narrator.narrate(explanation)   ->  Narrative           (plain language)
 
 Details:
 
-- **One explainer for every estimator kind.** A model-agnostic explainer over
-  the fitted estimator's `predict_proba`, run in the preprocessed numeric space
-  against a 100-row background sample captured at `fit` time. `TrainingResult.best`
-  can ship either the XGBoost model or the logistic baseline, and both go through
-  the identical path (~0.04s per row).
+- **One explainer for every estimator kind.** A model-agnostic explainer
+  (`shap.Explainer` over the fitted estimator's `predict_proba`), run in the
+  preprocessed numeric space against a synthetic 100-row background reference
+  built at `fit` time. `TrainingResult.best` can ship either the XGBoost model
+  or the logistic baseline, and both go through the identical path (~0.04s per
+  row). We don't use `shap.TreeExplainer` for the XGBoost case: its default
+  output is log-odds, not probability, and its interventional/probability mode
+  rejects the one-hot-encoded input here — a consistent, additive probability
+  space across both model kinds is worth more than the microseconds saved.
+- **The background carries no PII.** `synthesize_background` resamples each
+  feature column independently from its training values — every marginal is
+  preserved, but no output row is a real employee. This matters because the
+  background is persisted inside the model artifact by `RiskModel.save` and
+  ships on deploy (Phase 8).
 - **Probability space, additive.** `base_value + Σ all_contributions ≈ risk_score`
   to 1e-6, regardless of model kind — so a dashboard bar chart's segments sum to
   the score. Asserted in `tests/test_explain.py`.
