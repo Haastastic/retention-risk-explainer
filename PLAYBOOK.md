@@ -337,3 +337,47 @@ strategy so it's repeatable rather than tacit.
   only restate the implementation.
 - Coverage floors set with headroom and revisited rarely — a floor that tracks
   the exact current number just generates churn.
+
+---
+
+## Phase 7 — Interface
+
+**AI-native practice used**
+
+Built the Streamlit dashboard (`app.py`) with the rendering logic factored into a
+pure, importable module (`retention_risk/app_data.py`) that has no Streamlit
+import. That split let Claude Code generate a real test for the UI: a headless
+render via `streamlit.testing.v1.AppTest` that runs the whole page, switches
+reports, and asserts no exception — plus unit tests on the view-assembly
+functions. The UI is under the same coverage gate as the rest of the package.
+
+The interface deliberately encodes the discovery brief's constraints:
+- **Leads with the narrative, not the number.** Tier badge, plain-language
+  summary, drivers, suggested step; the underlying probability is one line in a
+  "how to read this" expander.
+- **The HRBP view surfaces the fairness finding at the point of use** —
+  per-protected-group flag rates *with group sizes*, and the four-fifths
+  failures shown as an explicit review-required banner, exactly as
+  `docs/fairness-audit.md` §6 requires.
+- **Narration degrades gracefully in the product**: `get_narrator()` gives the
+  template when no key is set, so the live link works with zero configuration.
+
+**Why at this stage**
+
+Deferring the UI until the pipeline was validated (an architecture principle in
+`CLAUDE.md`) meant the dashboard is a thin presentation layer over already-tested
+functions — `manager_card`, `hrbp_view` — rather than a place where logic
+accretes. The AppTest render is cheap insurance that the wiring holds as those
+functions change.
+
+**What operationalizing this at team scale looks like**
+
+- **UI logic lives in a Streamlit-free module**; the `.py` entrypoint is only
+  layout. This is what makes a dashboard testable at all.
+- **A headless render test per app** in CI — it catches API misuse and broken
+  wiring that a human would only find by clicking around.
+- Manager-facing surfaces for a model get a **framing review** (does it read as a
+  verdict or a prompt?) alongside the code review — a checklist item, not a
+  matter of taste.
+- Fairness results are **rendered in the product**, not just filed in a repo, so
+  the people using the tool see the caveats when they act.

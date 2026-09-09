@@ -60,8 +60,9 @@ This mirrors the architecture and workflow proven in the `ai-underwriter` projec
 - [x] Log this phase in PLAYBOOK.md as the test/review-stage AI practice
 
 ### Phase 7 — Interface
-- [ ] Streamlit dashboard: risk score, plain-language explanation, suggested manager action
-- [ ] Keep it manager-facing and actionable, not a raw model output
+- [x] Streamlit dashboard: risk score, plain-language explanation, suggested manager action — `app.py` + `retention_risk/app_data.py`; manager view + HRBP rollup
+- [x] Keep it manager-facing and actionable, not a raw model output — leads with tier badge + narrative + suggested step; score is a secondary detail; HRBP view surfaces the fairness picture at point of use
+- [x] Log this phase in PLAYBOOK.md as the interface-stage AI practice
 
 ### Phase 8 — Deployment & Documentation
 - [ ] CI/CD via GitHub Actions
