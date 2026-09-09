@@ -381,3 +381,75 @@ functions change.
   matter of taste.
 - Fairness results are **rendered in the product**, not just filed in a repo, so
   the people using the tool see the caveats when they act.
+
+---
+
+## Phase 8 — Deployment & Documentation
+
+**AI-native practice used**
+
+Used Claude Code to produce the deployment surface — `README.md` as the repo's
+front door, `DEPLOY.md` as an executable runbook, `runtime.txt` and a
+version-bounded `requirements.txt` — and to keep the "CD" honest: the app is
+never built into a binary artifact, it trains on cold start, and
+`tests/test_app.py` renders the whole page headless in CI, so **a green `main` is
+the deploy gate**. The one step Claude Code cannot take — the one-time
+connect-and-deploy click in the Streamlit dashboard — is written down as two
+minutes of instructions rather than left implicit.
+
+The docs were written *as each phase happened* (`discovery-brief`, `data-framing`,
+`model-card`, `fairness-audit`, `explainability`, `test-strategy`), each with a
+regeneration command or a drift test so it can't quietly go stale. This final
+phase only had to assemble the index and the runbook.
+
+**Why at this stage**
+
+Deferring the deploy runbook to the end would have meant reconstructing decisions
+("why no committed model artifact?", "why does the app work without a key?")
+from memory. Written now, with the code fresh, it's accurate. And gating deploy
+on the same CI that gates every PR means "it works on `main`" and "it works
+deployed" are the same claim.
+
+**What operationalizing this at team scale looks like**
+
+- **Deploy is a runbook in the repo**, versioned with the code, with the
+  non-automatable steps explicitly called out — not tribal knowledge.
+- The **build artifact is reproducible from source** (here: trained on boot) or
+  built by CI, never hand-uploaded.
+- A **headless render / smoke test in CI is the deploy gate** — "green main
+  deploys" only holds if main is actually exercised.
+- Docs carry a **regeneration command or a drift test**; a doc that can't be
+  re-derived or checked is a doc that will lie.
+
+---
+
+## Closing — this repo as a template for AI-native delivery
+
+The eight phases above are one project, but the shape is meant to transfer. What
+made each stage "AI-native" was not that an AI wrote code — it was that a
+judgement that usually stays tacit got **turned into an artifact a machine can
+check**:
+
+| Stage | The tacit thing | The artifact that enforces it |
+|---|---|---|
+| Discovery | "we know who this is for" | a structured brief, reviewed as a PR |
+| Framing | "we won't use protected attributes" | `schema.py` + a leakage test in CI |
+| Build | "the model is good enough" | the brief's thresholds as `passes_brief` checks |
+| Fairness | "we'll audit it later" | `audit_fairness()` + characterisation tests |
+| Explanation | "the LLM just narrates" | four boundary tests that fail if it doesn't |
+| Test/review | "we have tests" | a coverage gate + review-finding-becomes-test |
+| Interface | "it reads as a prompt, not a verdict" | a framing review + a headless render test |
+| Deploy | "it works" | one CI gate for PRs and deploys alike |
+
+**To run this across an org:** ship these as a template repo — the three CI
+workflows, a `schema.py` skeleton, a `passes_brief`-style eval object, a
+fairness-audit library, the boundary-test pattern, and a docs folder where every
+file has a drift test. A new project then inherits the gates on day one, and a
+reviewer (AI or human) can ask for each artifact *by name*. The AI generates the
+first draft of all of it; people spend their review time on the artifacts that
+carry real risk — the exclusion policy, the fairness method, the LLM boundary —
+instead of on formatting and boilerplate.
+
+That is the answer to "embed AI across the entire development lifecycle": not a
+tool bolted onto one stage, but a habit of making each stage's judgement
+executable, with the AI doing the drafting and the humans doing the deciding.

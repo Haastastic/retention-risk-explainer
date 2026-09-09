@@ -65,9 +65,10 @@ This mirrors the architecture and workflow proven in the `ai-underwriter` projec
 - [x] Log this phase in PLAYBOOK.md as the interface-stage AI practice
 
 ### Phase 8 — Deployment & Documentation
-- [ ] CI/CD via GitHub Actions
-- [ ] Deploy to Streamlit Community Cloud (or equivalent free tier) for a live link
-- [ ] Finalize PLAYBOOK.md as a stage-by-stage account of where AI was embedded, framed as a template for org-wide rollout — this is the artifact that speaks directly to the CPO's "embed AI across the entire development lifecycle" language
+- [x] CI/CD via GitHub Actions — lint + test (95% coverage gate) + Claude review on every PR; `tests/test_app.py` headless render is the deploy gate; app auto-redeploys on push to `main`
+- [~] Deploy to Streamlit Community Cloud (or equivalent free tier) for a live link — everything prepared (`app.py`, `requirements.txt`, `runtime.txt`, `.streamlit/`, `DEPLOY.md`); the one-time connect-and-deploy click at share.streamlit.io is a manual user step (see DEPLOY.md)
+- [x] Finalize PLAYBOOK.md as a stage-by-stage account of where AI was embedded, framed as a template for org-wide rollout — `PLAYBOOK.md` Phase 8 entry + "Closing — this repo as a template for AI-native delivery"
+- [x] README.md — repo front door, architecture, quickstart, results, docs index
 
 ## PLAYBOOK.md (create alongside this file)
 
