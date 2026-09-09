@@ -49,9 +49,10 @@ This mirrors the architecture and workflow proven in the `ai-underwriter` projec
 - [x] Log this phase in PLAYBOOK.md as the fairness-audit AI practice
 
 ### Phase 5 — Explainability Layer
-- [ ] SHAP values per prediction
-- [ ] Claude API converts SHAP output into manager-facing plain-language narrative
-- [ ] Confirm layer isolation holds: LLM never touches the risk score itself
+- [x] SHAP values per prediction — `retention_risk/explain.py`, model-agnostic explainer over `predict_proba` (probability space, additive) + one-hot folding → `Explanation`
+- [x] Claude API converts SHAP output into manager-facing plain-language narrative — `retention_risk/narrative.py` (`ClaudeNarrator`), with a deterministic `TemplateNarrator` fallback; `docs/explainability.md`
+- [x] Confirm layer isolation holds: LLM never touches the risk score itself — 4 boundary tests in `tests/test_narrative.py` (no score field, score not in prompt, no model callback, immutability)
+- [x] Log this phase in PLAYBOOK.md as the explainability-stage AI practice
 
 ### Phase 6 — Test Generation & Code Review
 - [ ] Use Claude to generate the test suite, not just review it

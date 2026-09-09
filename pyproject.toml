@@ -5,6 +5,10 @@
 testpaths = ["tests"]
 pythonpath = ["."]  # run in-tree without an editable install
 addopts = "-q --cov=retention_risk --cov-report=term-missing"
+filterwarnings = [
+    # shap imports trip matplotlib colormap deprecations we can't fix here
+    "ignore:.*set_(bad|over|under).*:PendingDeprecationWarning",
+]
 
 [tool.ruff]
 line-length = 100

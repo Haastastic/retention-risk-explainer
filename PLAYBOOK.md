@@ -240,3 +240,52 @@ arguably should see.
   use, so disparate impact is visible in the product, not only in a repo.
 - Characterisation tests on fairness numbers are standard — drift in a fairness
   metric should break a build, the same as a failing unit test.
+
+---
+
+## Phase 5 — Explainability Layer
+
+**AI-native practice used**
+
+This is the phase where the LLM finally appears in the product — and the
+practice was to make its non-involvement in the decision *enforceable*, not just
+stated. Built with Claude Code:
+
+- `explain.py` turns a prediction into a structured `Explanation` via SHAP, with
+  one-hot columns folded back to source features so the output is in the
+  manager's vocabulary.
+- `narrative.py` has two narrators behind one interface: a deterministic
+  `TemplateNarrator` (the default and the CI path) and a `ClaudeNarrator` that
+  calls the API. The app degrades to the template with no key, so the live demo
+  never depends on a secret being set.
+- The layer boundary is covered by **four tests**, each closing a different
+  path: `Narrative` has no score field; the score never enters the prompt;
+  `narrate()` never calls the model (monkeypatched to explode if it does); the
+  narrator can't mutate the decision. "The LLM only narrates" went from a
+  sentence in the brief to something CI fails on.
+
+Claude also wrote the test suite for this phase (previewing Phase 6): the mock
+Anthropic client, the fence-tolerant JSON parsing tests, the boundary tests.
+
+**Why at this stage**
+
+The moment an LLM is in the codebase is the moment someone can wire its output
+back into a decision "just for this one case". Putting the boundary tests in the
+same PR that introduces the LLM means that shortcut fails review from day one,
+and the isolation claim in the brief has teeth for every phase after.
+
+**What operationalizing this at team scale looks like**
+
+- **A boundary test is a required artifact** wherever an LLM sits next to a
+  model or a rule engine: prove the LLM's output can't reach the decision, by
+  test, in the introducing PR.
+- **Two implementations, one interface** is the house pattern for any LLM
+  feature — a deterministic fallback that is the CI path and the
+  no-credentials path, and the model call as an upgrade. Tests never hit the
+  API; the live link never hard-depends on a key.
+- The prompt is **built from a structured object** (`as_prompt_facts()`), not
+  string-concatenated at the call site, so what the model does and doesn't see
+  is reviewable in one place.
+- LLM output is **parsed into a typed shape** with an explicit schema, not
+  passed through as free text — the narrative can be wrong-in-wording but never
+  wrong-in-structure.

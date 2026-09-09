@@ -32,6 +32,27 @@ TIERS: tuple[Tier, ...] = ("High", "Medium", "Low")
 DEFAULT_HIGH_QUANTILE = 0.88
 DEFAULT_MEDIUM_QUANTILE = 0.65
 
+# Rows in the SHAP background reference (see synthesize_background).
+BACKGROUND_ROWS = 100
+
+
+def synthesize_background(
+    X: pd.DataFrame, *, n: int = BACKGROUND_ROWS, seed: int = 42
+) -> pd.DataFrame:
+    """A synthetic SHAP background sample — no intact employee record is kept.
+
+    Each column is resampled independently from its own training values, so every
+    marginal distribution is preserved but the joint combination in any output
+    row belongs to no real person. This is what gets persisted with the model
+    (``RiskModel.save``) and shipped on deploy, so it must carry no PII.
+    """
+    rng = np.random.default_rng(seed)
+    idx = pd.RangeIndex(n)
+    return pd.DataFrame(
+        {col: rng.choice(X[col].to_numpy(), size=n, replace=True) for col in X.columns},
+        index=idx,
+    ).astype(X.dtypes.to_dict())
+
 
 @dataclass
 class TierThresholds:
@@ -104,6 +125,7 @@ class RiskModel:
         self.pipeline_: Pipeline | None = None
         self.thresholds_: TierThresholds | None = None
         self.feature_names_: list[str] = []
+        self.background_: pd.DataFrame | None = None  # synthetic SHAP reference; no PII
 
     # -- fit / predict -----------------------------------------------------
     def fit(self, X: pd.DataFrame, y: pd.Series) -> RiskModel:
@@ -111,6 +133,7 @@ class RiskModel:
         self.feature_names_ = list(X.columns)
         self.pipeline_ = build_pipeline(self.kind, y, self.seed)
         self.pipeline_.fit(X, y)
+        self.background_ = synthesize_background(X, seed=self.seed)
         train_scores = self._raw_proba(X)
         self.thresholds_ = TierThresholds(
             high=float(np.quantile(train_scores, self.high_quantile)),

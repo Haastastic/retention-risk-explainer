@@ -66,6 +66,20 @@ def test_invalid_quantiles_raise():
         RiskModel(high_quantile=0.5, medium_quantile=0.6)
 
 
+def test_background_sample_carries_no_intact_employee_row(dataset):
+    """The persisted SHAP background must not be real employee records."""
+    m = train_baseline(dataset.X, dataset.y, seed=1)
+    bg = m.background_
+    assert bg is not None and len(bg) == 100
+    # no row of the synthetic background equals any real training row
+    real = set(map(tuple, dataset.X.to_numpy()))
+    synth = set(map(tuple, bg.to_numpy()))
+    assert real.isdisjoint(synth)
+    # but each column's value set is drawn from the real column
+    for col in dataset.X.columns:
+        assert set(bg[col]).issubset(set(dataset.X[col]))
+
+
 def test_save_load_roundtrip(fitted_xgb, dataset, tmp_path):
     path = tmp_path / "m.joblib"
     fitted_xgb.save(path)
