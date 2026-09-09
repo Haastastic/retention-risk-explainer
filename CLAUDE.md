@@ -44,8 +44,9 @@ This mirrors the architecture and workflow proven in the `ai-underwriter` projec
 - [x] Log this phase in PLAYBOOK.md as the build-stage AI practice
 
 ### Phase 4 — Fairness Audit
-- [ ] Disparate-impact ratio calculation across protected classes
-- [ ] Document methodology — this is the module flagged as a potential ai-underwriter extension too; consider building it here first and backporting
+- [x] Disparate-impact ratio calculation across protected classes — `retention_risk/fairness.py`, four-fifths rule on High-tier flag rate, thin-slice guard
+- [x] Document methodology — `docs/fairness-audit.md`: Gender passes; MaritalStatus & AgeBand fail, shown to track true attrition base rates (documented reason + governance mitigation per brief)
+- [x] Log this phase in PLAYBOOK.md as the fairness-audit AI practice
 
 ### Phase 5 — Explainability Layer
 - [ ] SHAP values per prediction
