@@ -19,15 +19,24 @@ jobs:
         with:
           fetch-depth: 1
 
+      # Workaround: claude-code-action@v1 has been failing to install its own
+      # `claude` binary on the runner ("Claude Code native binary not found at
+      # /home/runner/.local/bin/claude"). Install it explicitly first. Remove
+      # this step once the action bootstraps reliably again.
+      - name: Install Claude Code CLI
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/claude" --version
+
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          # NOTE: the `code-review` plugin (plugin_marketplaces/plugins inputs) is
-          # deliberately not used — claude-code-action@v1 currently fails to load it
-          # ("posix_spawn '/home/runner/.local/bin/claude'"). The review prompt is
-          # inlined instead; restore the plugin form once that upstream bug is fixed.
+          # The `code-review` plugin (plugin_marketplaces/plugins inputs) is not
+          # used — the action currently also fails to load it. Review prompt is
+          # inlined instead; restore the plugin form once upstream is fixed.
           prompt: |
             Review the diff on this pull request for correctness bugs, security
             issues, broken tests, and clear design problems. This repo builds an
